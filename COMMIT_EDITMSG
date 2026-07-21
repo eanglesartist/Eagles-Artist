@@ -1,9 +1,0 @@
-Initial commit: EagleArtistAI v2 Streamlit app
-
-- Multipage Streamlit app (Dashboard, AI Video Studio, Music/Image
-  Generators, Project Manager, Settings)
-- Upgraded AI Video Panel: Create/Edit/Extend with full sub-actions
-- Rule-based prompt engine (ai_engine/prompt_builder.py)
-- Project -> Scene timeline data model with SQLite persistence
-- Pluggable AI provider registry (video/image/voice/music)
-- EagleArtistAI branding, credits, and MIT license
