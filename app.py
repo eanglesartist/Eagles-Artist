@@ -77,6 +77,7 @@ st.markdown(
 defaults = {
     "generated_image": None,   # PIL.Image of the latest AI-generated art
     "poster_image": None,      # PIL.Image after text overlay
+    "generated_video": None,   # bytes of the latest generated video clip
     "history": [],             # list of (label, PIL.Image) for this session
 }
 for key, value in defaults.items():
@@ -213,6 +214,52 @@ def to_png_bytes(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
+def _resolve_replicate_url(output) -> str:
+    """Normalize a Replicate prediction output into a single media URL."""
+    if isinstance(output, list):
+        output = output[0]
+    # Newer replicate SDKs return a FileOutput object with a .url attribute.
+    return getattr(output, "url", output)
+
+
+def animate_image_to_video(image: Image.Image, motion_strength: int) -> bytes:
+    """Turn a still image into a short video clip using Stable Video Diffusion."""
+    if replicate is None:
+        raise RuntimeError("The 'replicate' package is not installed.")
+    client = replicate.Client(api_token=replicate_key)
+
+    buf = io.BytesIO()
+    image.convert("RGB").save(buf, format="PNG")
+    buf.seek(0)
+
+    output = client.run(
+        "stability-ai/stable-video-diffusion:"
+        "3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172dc",
+        input={
+            "input_image": buf,
+            "motion_bucket_id": motion_strength,
+            "frames_per_second": 6,
+            "cond_aug": 0.02,
+        },
+    )
+    video_url = _resolve_replicate_url(output)
+    return requests.get(video_url, timeout=120).content
+
+
+def generate_video_from_text(prompt: str) -> bytes:
+    """Generate a short video clip directly from a text prompt."""
+    if replicate is None:
+        raise RuntimeError("The 'replicate' package is not installed.")
+    client = replicate.Client(api_token=replicate_key)
+
+    output = client.run(
+        "minimax/video-01",
+        input={"prompt": prompt},
+    )
+    video_url = _resolve_replicate_url(output)
+    return requests.get(video_url, timeout=120).content
+
+
 # ----------------------------------------------------------------------------
 # HEADER
 # ----------------------------------------------------------------------------
@@ -221,8 +268,8 @@ st.markdown(
     "Create images, design posters, and export finished artwork — all in one place."
 )
 
-tab_generate, tab_poster, tab_history = st.tabs(
-    ["🎨 Generate Image", "✍️ Poster Editor", "🕘 History"]
+tab_generate, tab_poster, tab_video, tab_history = st.tabs(
+    ["🎨 Generate Image", "✍️ Poster Editor", "🎥 Video Creator", "🕘 History"]
 )
 
 # ----------------------------------------------------------------------------
@@ -324,7 +371,82 @@ with tab_poster:
         )
 
 # ----------------------------------------------------------------------------
-# TAB 3 — HISTORY
+# TAB 3 — VIDEO CREATOR
+# ----------------------------------------------------------------------------
+with tab_video:
+    st.markdown('<div class="studio-card">', unsafe_allow_html=True)
+    st.subheader("3. Turn your artwork into a video")
+
+    video_mode = st.radio(
+        "Mode",
+        options=["Animate my image", "Create from text"],
+        horizontal=True,
+        help=(
+            "Animate: brings your generated image to life with motion. "
+            "Create: generates a new clip directly from a text description."
+        ),
+    )
+
+    if video_mode == "Animate my image":
+        if st.session_state.generated_image is None:
+            st.info("Generate an image in the first tab first — this mode animates it.")
+        else:
+            st.image(
+                st.session_state.poster_image or st.session_state.generated_image,
+                caption="Source frame",
+                width=320,
+            )
+            motion_strength = st.slider(
+                "Motion strength", min_value=1, max_value=255, value=127,
+                help="Higher values add more movement to the clip.",
+            )
+            video_clicked = st.button("🎬 Animate Image")
+
+            if video_clicked:
+                if keys_ready(require_replicate=True):
+                    with st.spinner("Animating your image... this can take a few minutes."):
+                        try:
+                            source = st.session_state.poster_image or st.session_state.generated_image
+                            video_bytes = animate_image_to_video(source, motion_strength)
+                            st.session_state.generated_video = video_bytes
+                            st.success("✅ Video ready below.")
+                        except Exception as exc:
+                            st.error(f"Video generation failed: {exc}")
+
+    else:  # Create from text
+        video_prompt = st.text_area(
+            "Describe your video",
+            value="A cozy coffee shop at sunrise, steam rising from a cup, warm cinematic light",
+            height=100,
+            help="You can describe scenes, characters, camera movement, and mood.",
+        )
+        video_clicked = st.button("🎬 Create Video")
+
+        if video_clicked:
+            if not video_prompt.strip():
+                st.error("Please describe the video you want to create.")
+            elif keys_ready(require_replicate=True):
+                with st.spinner("Creating your video... this can take a few minutes."):
+                    try:
+                        video_bytes = generate_video_from_text(video_prompt)
+                        st.session_state.generated_video = video_bytes
+                        st.success("✅ Video ready below.")
+                    except Exception as exc:
+                        st.error(f"Video generation failed: {exc}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if st.session_state.generated_video is not None:
+        st.video(st.session_state.generated_video)
+        st.download_button(
+            "⬇️ Download video",
+            data=st.session_state.generated_video,
+            file_name=f"ai-video-{int(time.time())}.mp4",
+            mime="video/mp4",
+        )
+
+# ----------------------------------------------------------------------------
+# TAB 4 — HISTORY
 # ----------------------------------------------------------------------------
 with tab_history:
     st.subheader("Session history")
