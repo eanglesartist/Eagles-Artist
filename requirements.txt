@@ -1,5 +1,5 @@
-streamlit
-openai
-replicate
-Pillow
-requests
+streamlit>=1.32
+openai>=1.14
+replicate>=0.25
+pillow>=10.0
+requests>=2.31
