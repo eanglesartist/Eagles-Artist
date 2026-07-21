@@ -262,12 +262,3 @@ with right:
 """,
         unsafe_allow_html=True,
     )
-
-# ---------------------------
-# (Optional) add your own logic here
-# ---------------------------
-# For example, you can bind the "Create" button to a callback using st.button,
-# but since we used plain HTML, we can also create a Streamlit button that
-# overrides the HTML one, or handle with st.form.
-# The simplest: add a placeholder for interactivity.
-# st.button("Create (Streamlit version)", key="create_btn")
