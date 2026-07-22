@@ -1,16 +1,13 @@
 import streamlit as st
+import uuid
 
 def init_session_state():
-    """Initializes global state variables for the entire studio."""
-    defaults = {
-        "current_project_id": None,
-        "active_tab": "movie_mode",
-        "timeline_clips": [],
-        "render_queue": [],
-        "selected_camera": "ARRI Alexa",
-        "is_rendering": False
-    }
-    
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
+    """Initialize all Streamlit session state variables."""
+    if "user_credits" not in st.session_state:
+        st.session_state["user_credits"] = 1250
+    if "current_video" not in st.session_state:
+        st.session_state["current_video"] = None
+    if "user_id" not in st.session_state:
+        st.session_state["user_id"] = str(uuid.uuid4())
+    if "_db_synced" not in st.session_state:
+        st.session_state["_db_synced"] = True
