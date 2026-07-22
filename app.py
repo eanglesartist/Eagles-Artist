@@ -14,7 +14,6 @@ st.set_page_config(
 )
 init_session_state()
 
-# Ensure user credits exist in session state
 if "user_credits" not in st.session_state:
     st.session_state["user_credits"] = 1250
 
@@ -29,41 +28,44 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. DIALOG: BUY CREDITS POPUP
+# 3. DIALOG: UPGRADE PLAN POPUP ($1 - $10)
 # ==========================================
-@st.dialog("💳 Buy Studio Credits")
-def show_buy_credits_dialog():
-    st.write("Choose a credit package to power your AI video generations:")
+@st.dialog("🚀 Upgrade Your Plan")
+def show_upgrade_plan_dialog():
+    st.write("Choose a plan or top-up package to upgrade your studio capabilities:")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("### Starter")
-        st.write("⚡ **500 Credits**")
-        st.write("$9.99")
-        if st.button("Buy 500", key="buy_500", use_container_width=True):
-            st.session_state["user_credits"] += 500
-            st.success("Successfully added 500 credits!")
+        st.markdown("### Starter Pack")
+        st.write("⚡ **50 Credits**")
+        st.write("**$1.00 / one-time**")
+        st.write("Ideal for quick tests.")
+        if st.button("Select $1", key="plan_1", use_container_width=True):
+            st.session_state["user_credits"] += 50
+            st.success("Upgraded with 50 credits!")
             time.sleep(1)
             st.rerun()
             
     with col2:
-        st.markdown("### Pro")
-        st.write("⚡ **2,000 Credits**")
-        st.write("$29.99")
-        if st.button("Buy 2,000", key="buy_2000", use_container_width=True):
-            st.session_state["user_credits"] += 2000
-            st.success("Successfully added 2,000 credits!")
+        st.markdown("### Creator Pro")
+        st.write("⚡ **300 Credits**")
+        st.write("**$5.00 / one-time**")
+        st.write("Best for regular editing.")
+        if st.button("Select $5", key="plan_5", use_container_width=True):
+            st.session_state["user_credits"] += 300
+            st.success("Upgraded with 300 credits!")
             time.sleep(1)
             st.rerun()
             
     with col3:
-        st.markdown("### Studio")
-        st.write("⚡ **5,000 Credits**")
-        st.write("$59.99")
-        if st.button("Buy 5,000", key="buy_5000", use_container_width=True):
-            st.session_state["user_credits"] += 5000
-            st.success("Successfully added 5,000 credits!")
+        st.markdown("### Studio Unlimited")
+        st.write("⚡ **700 Credits**")
+        st.write("**$10.00 / one-time**")
+        st.write("Maximum power & priority.")
+        if st.button("Select $10", key="plan_10", use_container_width=True):
+            st.session_state["user_credits"] += 700
+            st.success("Upgraded with 700 credits!")
             time.sleep(1)
             st.rerun()
 
@@ -72,17 +74,16 @@ def show_buy_credits_dialog():
 # ==========================================
 def render_top_toolbar():
     with st.container():
-        cols = st.columns([2, 1, 1, 1, 2, 1.2, 1], vertical_alignment="center")
+        cols = st.columns([2, 1, 1, 1, 2, 1.4, 1], vertical_alignment="center")
         cols[0].markdown("### 🎬 Cinematic Studio")
         cols[1].button("📁 Project", use_container_width=True)
         cols[2].button("💾 Save", use_container_width=True)
         cols[3].button("↩️ Undo", use_container_width=True)
         cols[4].selectbox("🧠 AI Model", ["Veo 3.1 Pro", "Runway Gen-3", "Sora", "Kling"], label_visibility="collapsed")
         
-        # Display live dynamic credits and a button to buy more
         current_creds = st.session_state["user_credits"]
-        if cols[5].button(f"⚡ Credits: {current_creds}", use_container_width=True, type="secondary"):
-            show_buy_credits_dialog()
+        if cols[5].button(f"🚀 Upgrade (Bal: {current_creds})", use_container_width=True, type="primary"):
+            show_upgrade_plan_dialog()
             
         cols[6].button("👤 Profile", use_container_width=True)
         st.divider()
@@ -121,11 +122,10 @@ def render_right_sidebar():
         
         if st.button("✨ Generate (Cost: 50 Credits)", type="primary", use_container_width=True):
             if st.session_state["user_credits"] < 50:
-                st.error("❌ Not enough credits! Please top up your balance.")
+                st.error("❌ Not enough credits! Please click 'Upgrade' above to top up.")
             elif prompt:
                 with st.spinner("🎬 AI Director is generating your scene..."):
                     time.sleep(3) 
-                    # Deduct 50 credits per generation
                     st.session_state["user_credits"] -= 50
                     st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
                     st.success("Generation Complete! (-50 Credits)")
