@@ -1,7 +1,8 @@
-streamlit>=1.46.0
-Pillow
-requests
-openai
-python-dotenv
-pandas
-numpy
+streamlit>=1.30.0
+Pillow>=10.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+SQLAlchemy>=2.0.0
+openai>=1.0.0
+replicate>=0.22.0
+# Add specific SDKs for Luma/Runway/Pika as they become available
