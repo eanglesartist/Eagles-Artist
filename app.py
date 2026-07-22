@@ -1,7 +1,10 @@
 import streamlit as st
 import time
+import uuid
+import stripe
 from utils.session import init_session_state
 from utils.config import BASE_DIR
+from utils.db import init_db, get_or_create_user, get_user_credits, deduct_credits, add_credits
 
 # ==========================================
 # 1. PAGE CONFIGURATION & STATE
@@ -10,15 +13,63 @@ st.set_page_config(
     page_title="AI Cinematic Studio",
     page_icon="🎬",
     layout="wide",
-    initial_sidebar_state="collapsed" 
+    initial_sidebar_state="collapsed"
 )
+
+# Initialize database tables
+init_db()
+
+# Initialize session state
 init_session_state()
 
-if "user_credits" not in st.session_state:
-    st.session_state["user_credits"] = 1250
+# Ensure a unique user ID for this browser session (acts as a "guest" login)
+if "user_id" not in st.session_state:
+    st.session_state["user_id"] = str(uuid.uuid4())
+
+# Load credits from DB into session state (sync)
+if "user_credits" not in st.session_state or st.session_state.get("_db_synced") is None:
+    st.session_state["user_credits"] = get_or_create_user(st.session_state["user_id"])
+    st.session_state["_db_synced"] = True
 
 # ==========================================
-# 2. CUSTOM CSS INJECTION
+# 2. STRIPE RETURN URL HANDLER (Instant Credits)
+# ==========================================
+# Retrieve session_id from URL parameters
+session_id = st.query_params.get("session_id")
+
+if session_id and not st.session_state.get(f"processed_{session_id}"):
+    try:
+        # Load Stripe secret key from secrets
+        stripe.api_key = st.secrets["STRIPE_SECRET_KEY"]
+        
+        # Verify payment status with Stripe
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+        
+        if checkout_session.payment_status == "paid":
+            user_id = st.session_state["user_id"]
+            
+            # Determine credits based on amount paid (in dollars)
+            amount_total = checkout_session.amount_total / 100
+            credits_map = {1.0: 50, 5.0: 300, 10.0: 700}
+            credits_to_add = credits_map.get(amount_total, 0)
+            
+            if credits_to_add > 0:
+                # Update DB and session state
+                new_balance = add_credits(user_id, credits_to_add, session_id)
+                st.session_state["user_credits"] = new_balance
+                st.session_state[f"processed_{session_id}"] = True
+                
+                # Remove query param to avoid reprocessing on next rerun
+                st.query_params.clear()
+                
+                st.success(f"✅ Payment successful! Added {credits_to_add} credits. New balance: {new_balance}")
+                st.rerun()  # Force refresh to update UI
+    except Exception as e:
+        st.error(f"Payment verification failed: {e}")
+        st.query_params.clear()
+
+# ==========================================
+# 3. CUSTOM CSS INJECTION
 # ==========================================
 st.markdown("""
     <style>
@@ -28,7 +79,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. DIALOG: STRIPE PAYMENT LINKS POPUP
+# 4. DIALOG: STRIPE PAYMENT LINKS POPUP
 # ==========================================
 @st.dialog("💳 Secure Checkout ($1 - $10)")
 def show_upgrade_plan_dialog():
@@ -40,28 +91,26 @@ def show_upgrade_plan_dialog():
         st.markdown("### Starter Pack")
         st.write("⚡ **50 Credits**")
         st.write("**$1.00**")
-        # Replace the URL below with your actual Stripe Payment Link
-        st.markdown("[🔗 Pay $1.00](https://buy.stripe.com/your_actual_live_link_1)", unsafe_allow_html=True)
+        # st.link_button opens the URL in a new tab, preserving your Streamlit app
+        st.link_button("🔗 Pay $1.00", "https://buy.stripe.com/your_actual_link_1", type="primary")
             
     with col2:
         st.markdown("### Creator Pro")
         st.write("⚡ **300 Credits**")
         st.write("**$5.00**")
-        # Replace the URL below with your actual Stripe Payment Link
-        st.markdown("[🔗 Pay $5.00](https://buy.stripe.com/your_actual_live_link_5)", unsafe_allow_html=True)
+        st.link_button("🔗 Pay $5.00", "https://buy.stripe.com/your_actual_link_5", type="primary")
             
     with col3:
         st.markdown("### Studio Unlimited")
         st.write("⚡ **700 Credits**")
         st.write("**$10.00**")
-        # Replace the URL below with your actual Stripe Payment Link
-        st.markdown("[🔗 Pay $10.00](https://buy.stripe.com/your_actual_live_link_10)", unsafe_allow_html=True)
+        st.link_button("🔗 Pay $10.00", "https://buy.stripe.com/your_actual_link_10", type="primary")
         
     st.divider()
-    st.info("💡 Note: Replace the placeholder URLs in app.py with your real Stripe Payment Links.")
+    st.info("💡 Make sure your Stripe Payment Links have the 'Return URL' set to your app's URL (e.g., https://yourapp.com) so users are redirected back.")
 
 # ==========================================
-# 4. UI COMPONENTS
+# 5. UI COMPONENTS
 # ==========================================
 def render_top_toolbar():
     with st.container():
@@ -93,10 +142,11 @@ def render_left_sidebar():
 def render_preview_canvas():
     st.subheader("Preview Canvas")
     
+    # Use a local sample video or the hardcoded one as fallback
     if st.session_state.get("current_video"):
         st.video(st.session_state["current_video"])
     else:
-        st.info("🎥 Enter a prompt and click Generate to see your video here.") 
+        st.info("🎥 Enter a prompt and click Generate to see your video here.")
     
     cols = st.columns([1, 4, 1])
     cols[0].button("⏮", use_container_width=True)
@@ -112,17 +162,29 @@ def render_right_sidebar():
         st.file_uploader("Reference Image")
         
         if st.button("✨ Generate (Cost: 50 Credits)", type="primary", use_container_width=True):
-            if st.session_state["user_credits"] < 50:
+            # Deduct from database
+            user_id = st.session_state["user_id"]
+            success, new_balance = deduct_credits(user_id, 50)
+            
+            if not success:
                 st.error("❌ Not enough credits! Please click 'Upgrade' above to top up.")
-            elif prompt:
-                with st.spinner("🎬 AI Director is generating your scene..."):
-                    time.sleep(3) 
-                    st.session_state["user_credits"] -= 50
-                    st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
-                    st.success("Generation Complete! (-50 Credits)")
-                    st.rerun()
-            else:
+            elif not prompt.strip():
                 st.warning("Please enter a Scene Description first.")
+                # Refund the credits since we deducted but didn't generate
+                # (In real app, you might check prompt before deduction)
+                add_credits(user_id, 50) 
+                st.session_state["user_credits"] = get_user_credits(user_id)
+            else:
+                with st.spinner("🎬 AI Director is generating your scene..."):
+                    time.sleep(3)  # Simulate generation
+                    # Update session state with new balance
+                    st.session_state["user_credits"] = new_balance
+                    # Set a video (you can replace this with your local video file)
+                    st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
+                    st.success(f"✅ Generation complete! (-50 Credits) Remaining: {new_balance}")
+                    # No st.rerun() needed – the UI will update on next interaction
+                    # But we force a rerun to update the balance in the top bar immediately
+                    st.rerun()
         
     with tabs[1]:
         st.selectbox("Lens", ["24mm Wide", "35mm Standard", "50mm Portrait", "85mm Telephoto"])
@@ -134,7 +196,7 @@ def render_right_sidebar():
         st.button("🚀 Extend (+4s)", type="primary", use_container_width=True)
 
 # ==========================================
-# 5. MAIN WORKSPACE LAYOUT
+# 6. MAIN WORKSPACE LAYOUT
 # ==========================================
 render_top_toolbar()
 
