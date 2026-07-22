@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from .. import crud, schemas
 from ..database import get_db
 import threading
@@ -31,10 +30,8 @@ def generate(request: schemas.JobCreate, user_id: str, db: Session = Depends(get
     def process():
         try:
             crud.update_job_status(db, job_id, "processing")
-            # Enhance prompt with OpenAI (optional)
             enhanced_prompt = enhance_prompt(request.prompt)
             model_version = MODEL_MAP.get(request.model.lower(), MODEL_MAP["veo"])
-            # Run Replicate prediction
             prediction = replicate.predictions.create(
                 version=model_version,
                 input={
