@@ -1,9 +1,7 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, JSON, Enum, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from .database import Base
 import datetime
-import uuid
 
 class User(Base):
     __tablename__ = "users"
