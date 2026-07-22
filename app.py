@@ -14,6 +14,10 @@ st.set_page_config(
 )
 init_session_state()
 
+# Ensure user credits exist in session state
+if "user_credits" not in st.session_state:
+    st.session_state["user_credits"] = 1250
+
 # ==========================================
 # 2. CUSTOM CSS INJECTION
 # ==========================================
@@ -25,17 +29,61 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. UI COMPONENTS
+# 3. DIALOG: BUY CREDITS POPUP
+# ==========================================
+@st.dialog("💳 Buy Studio Credits")
+def show_buy_credits_dialog():
+    st.write("Choose a credit package to power your AI video generations:")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("### Starter")
+        st.write("⚡ **500 Credits**")
+        st.write("$9.99")
+        if st.button("Buy 500", key="buy_500", use_container_width=True):
+            st.session_state["user_credits"] += 500
+            st.success("Successfully added 500 credits!")
+            time.sleep(1)
+            st.rerun()
+            
+    with col2:
+        st.markdown("### Pro")
+        st.write("⚡ **2,000 Credits**")
+        st.write("$29.99")
+        if st.button("Buy 2,000", key="buy_2000", use_container_width=True):
+            st.session_state["user_credits"] += 2000
+            st.success("Successfully added 2,000 credits!")
+            time.sleep(1)
+            st.rerun()
+            
+    with col3:
+        st.markdown("### Studio")
+        st.write("⚡ **5,000 Credits**")
+        st.write("$59.99")
+        if st.button("Buy 5,000", key="buy_5000", use_container_width=True):
+            st.session_state["user_credits"] += 5000
+            st.success("Successfully added 5,000 credits!")
+            time.sleep(1)
+            st.rerun()
+
+# ==========================================
+# 4. UI COMPONENTS
 # ==========================================
 def render_top_toolbar():
     with st.container():
-        cols = st.columns([2, 1, 1, 1, 2, 1, 1], vertical_alignment="center")
+        cols = st.columns([2, 1, 1, 1, 2, 1.2, 1], vertical_alignment="center")
         cols[0].markdown("### 🎬 Cinematic Studio")
         cols[1].button("📁 Project", use_container_width=True)
         cols[2].button("💾 Save", use_container_width=True)
         cols[3].button("↩️ Undo", use_container_width=True)
         cols[4].selectbox("🧠 AI Model", ["Veo 3.1 Pro", "Runway Gen-3", "Sora", "Kling"], label_visibility="collapsed")
-        cols[5].markdown("**Credits: 1,250**")
+        
+        # Display live dynamic credits and a button to buy more
+        current_creds = st.session_state["user_credits"]
+        if cols[5].button(f"⚡ Credits: {current_creds}", use_container_width=True, type="secondary"):
+            show_buy_credits_dialog()
+            
         cols[6].button("👤 Profile", use_container_width=True)
         st.divider()
 
@@ -53,7 +101,6 @@ def render_left_sidebar():
 def render_preview_canvas():
     st.subheader("Preview Canvas")
     
-    # Check if a video exists in the session state
     if st.session_state.get("current_video"):
         st.video(st.session_state["current_video"])
     else:
@@ -72,17 +119,17 @@ def render_right_sidebar():
         prompt = st.text_area("Scene Description", height=150, placeholder="A cinematic wide shot of...")
         st.file_uploader("Reference Image")
         
-        # Working Generate Button Logic
-        if st.button("✨ Generate", type="primary", use_container_width=True):
-            if prompt:
+        if st.button("✨ Generate (Cost: 50 Credits)", type="primary", use_container_width=True):
+            if st.session_state["user_credits"] < 50:
+                st.error("❌ Not enough credits! Please top up your balance.")
+            elif prompt:
                 with st.spinner("🎬 AI Director is generating your scene..."):
-                    # Simulates the AI processing time
                     time.sleep(3) 
-                    
-                    # Saves the video to the app's memory
+                    # Deduct 50 credits per generation
+                    st.session_state["user_credits"] -= 50
                     st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
-                    st.success("Generation Complete!")
-                    st.rerun() # Refreshes the UI to show the video immediately
+                    st.success("Generation Complete! (-50 Credits)")
+                    st.rerun()
             else:
                 st.warning("Please enter a Scene Description first.")
         
@@ -96,11 +143,10 @@ def render_right_sidebar():
         st.button("🚀 Extend (+4s)", type="primary", use_container_width=True)
 
 # ==========================================
-# 4. MAIN WORKSPACE LAYOUT
+# 5. MAIN WORKSPACE LAYOUT
 # ==========================================
 render_top_toolbar()
 
-# 3-column grid (Left Menu | Main Canvas | AI Director)
 left_col, center_col, right_col = st.columns([2.5, 5, 3.5], gap="large")
 
 with left_col:
