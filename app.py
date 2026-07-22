@@ -1,43 +1,201 @@
-"""
-app.py
-------------------
-Main entry point. Streamlit auto-discovers pages/ as the multipage nav;
-this file renders the landing/dashboard content and page config used
-across the whole app.
-"""
 import streamlit as st
 
-from components.styles import inject_css
-from components.header import render_header
-from state import init_state, get_active_project
+st.set_page_config(page_title="Cinematic Studio", layout="wide", initial_sidebar_state="collapsed")
 
-st.set_page_config(page_title="EagleArtistAI Studio", page_icon="🦅", layout="wide", initial_sidebar_state="collapsed")
+# ---------------------------
+# Advanced Cinematic CSS
+# ---------------------------
+st.markdown(
+    """
+<style>
+    .main .block-container { padding: 0; max-width: 100%; background: #0F172A; } /* Dark mode for video editing */
+    header {visibility: hidden;}
+    
+    .panel-dark {
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        height: calc(100vh - 40px);
+        padding: 20px;
+        color: #F8FAFC;
+        overflow-y: auto;
+        margin: 20px 20px 20px 0;
+    }
+    
+    /* Segmented Control for Project Type */
+    .project-type-container {
+        display: flex;
+        background: #0F172A;
+        border-radius: 10px;
+        padding: 4px;
+        margin-bottom: 20px;
+    }
+    .pt-btn {
+        flex: 1;
+        text-align: center;
+        padding: 8px 0;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 6px;
+        color: #94A3B8;
+        cursor: pointer;
+    }
+    .pt-btn.active {
+        background: #3B82F6;
+        color: white;
+    }
 
-init_state()
-inject_css()
+    /* Settings Blocks */
+    .setting-block {
+        background: #0F172A;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+    .setting-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #94A3B8;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Grid for Camera/Format */
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .grid-item {
+        background: #1E293B;
+        border: 1px solid #334155;
+        padding: 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        text-align: center;
+        color: #CBD5E1;
+        cursor: pointer;
+    }
+    .grid-item:hover { border-color: #3B82F6; }
+    .grid-item.active { border-color: #3B82F6; background: rgba(59,130,246,0.1); color: #60A5FA;}
 
-project = get_active_project()
-render_header(project_title=project.title, credits=st.session_state.credits)
+    /* Extend Timeline UI */
+    .extend-viz {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 10px;
+    }
+    .frame-box {
+        height: 40px;
+        flex: 1;
+        background: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=100&q=80') center/cover;
+        border-radius: 4px;
+        opacity: 0.5;
+    }
+    .frame-box.new {
+        background: #3B82F6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+        opacity: 1;
+        border: 2px dashed #93C5FD;
+    }
 
-st.markdown("<div style='padding: 32px 48px;'>", unsafe_allow_html=True)
-st.markdown("## 🦅 Welcome to EagleArtistAI Studio")
-st.write(
-    "Describe a scene in plain language and EagleArtistAI turns it into a finished video — "
-    "clips, voiceover, music, and captions, all AI-generated."
+    /* Big Generate Button */
+    .btn-generate {
+        width: 100%;
+        background: linear-gradient(135deg, #3B82F6, #2563EB);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 10px;
+        box-shadow: 0 4px 15px rgba(37,99,235,0.3);
+    }
+</style>
+""",
+    unsafe_allow_html=True,
 )
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.markdown('<div class="dash-card">🎬<h3>New Video</h3><p>Start a fresh project</p></div>', unsafe_allow_html=True)
-    if st.button("Open Studio", use_container_width=True, key="home_open_studio"):
-        st.switch_page("pages/2_AI_Video_Studio.py")
-with col2:
-    st.markdown('<div class="dash-card">📁<h3>My Projects</h3><p>Resume recent work</p></div>', unsafe_allow_html=True)
-    if st.button("View Projects", use_container_width=True, key="home_view_projects"):
-        st.switch_page("pages/5_Project_Manager.py")
-with col3:
-    st.markdown(f'<div class="dash-card">⚡<h3>{st.session_state.credits} Credits</h3><p>Generation balance</p></div>', unsafe_allow_html=True)
-with col4:
-    st.markdown('<div class="dash-card">🗂️<h3>Templates</h3><p>Start from a preset</p></div>', unsafe_allow_html=True)
+# ---------------------------
+# Layout (Just showing the Right Panel for clarity)
+# ---------------------------
+col_workspace, col_aipanel = st.columns([7, 3], gap="small")
 
-st.markdown("</div>", unsafe_allow_html=True)
+with col_workspace:
+    st.markdown("<div style='height: 100vh; display:flex; align-items:center; justify-content:center; color:#64748B;'>[ Timeline and Canvas Area - Dark Mode ]</div>", unsafe_allow_html=True)
+
+with col_aipanel:
+    st.markdown(
+        """
+    <div class="panel-dark">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="font-weight: 600; font-size: 16px;">🎬 Cinematic Studio</div>
+            <span style="font-size: 12px; background: #334155; padding: 4px 10px; border-radius: 20px; color:#93C5FD;">Veo 3.1 Pro</span>
+        </div>
+
+        <!-- Project Type -->
+        <div class="project-type-container">
+            <div class="pt-btn active">Movie</div>
+            <div class="pt-btn">Music Video</div>
+            <div class="pt-btn">Short Film</div>
+        </div>
+
+        <!-- Prompt Engine -->
+        <div class="setting-block">
+            <div class="setting-title">Scene Description</div>
+            <textarea style="width: 100%; height: 80px; background: #1E293B; border: 1px solid #334155; border-radius: 8px; color: white; padding: 10px; font-family: inherit; resize: none;" placeholder="Describe the shot, lighting, and subject..."></textarea>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 10px; background: #334155; padding: 4px 8px; border-radius: 4px; color: #CBD5E1;">+ Add Style</span>
+                <span style="font-size: 10px; background: #334155; padding: 4px 8px; border-radius: 4px; color: #CBD5E1;">+ Negative Prompt</span>
+            </div>
+        </div>
+
+        <!-- Camera & Format Controls -->
+        <div class="setting-block">
+            <div class="setting-title">Cinematography</div>
+            <div class="grid-2" style="margin-bottom: 12px;">
+                <div class="grid-item active">🎥 Pan Right</div>
+                <div class="grid-item">🎥 Zoom In</div>
+                <div class="grid-item">🚁 Drone/FPV</div>
+                <div class="grid-item">✋ Handheld</div>
+            </div>
+            
+            <div class="setting-title" style="margin-top: 16px;">Aspect Ratio</div>
+            <div class="grid-2">
+                <div class="grid-item">16:9 (Standard)</div>
+                <div class="grid-item active">2.35:1 (Cinema)</div>
+            </div>
+        </div>
+
+        <!-- Extend / Outpaint Logic -->
+        <div class="setting-block" style="border-color: #3B82F6;">
+            <div style="display:flex; justify-content:space-between;">
+                <div class="setting-title" style="color: #60A5FA;">⤢ Video Extension</div>
+                <input type="checkbox" checked style="accent-color: #3B82F6;">
+            </div>
+            <p style="font-size: 11px; color: #94A3B8; margin-top: 4px; line-height: 1.4;">
+                Generate the next 4 seconds using the last frame of the selected clip to maintain character and environment consistency.
+            </p>
+            <div class="extend-viz">
+                <div class="frame-box"></div>
+                <div class="frame-box"></div>
+                <div class="frame-box"></div>
+                <div class="frame-box new">✨</div>
+            </div>
+        </div>
+
+        <button class="btn-generate">Generate Next Scene (4s)</button>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
