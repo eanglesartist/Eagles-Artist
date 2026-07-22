@@ -1,12 +1,11 @@
 import os
 import openai
 
-# Load API key from environment (never hardcode)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def enhance_prompt(raw_prompt: str) -> str:
     if not openai.api_key:
-        return raw_prompt  # fallback if not set
+        return raw_prompt
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
