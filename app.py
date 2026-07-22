@@ -38,6 +38,14 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT,
+            amount INTEGER,
+            status TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -48,9 +56,10 @@ class GenerateRequest(BaseModel):
     user_id: str
     model: str = "veo"
 
-class CreditDeductRequest(BaseModel):
+class CreditAddRequest(BaseModel):
     user_id: str
-    amount: int = 50
+    amount: int
+    stripe_session_id: Optional[str] = None
 
 def get_user_credits(user_id: str) -> int:
     conn = sqlite3.connect(DB_PATH)
@@ -60,47 +69,48 @@ def get_user_credits(user_id: str) -> int:
     conn.close()
     return row["credits"] if row else 1250
 
-def deduct_credits(user_id: str, amount: int) -> tuple[bool, int]:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.execute("SELECT credits FROM users WHERE user_id = ?", (user_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.execute("INSERT INTO users (user_id, credits) VALUES (?, ?)", (user_id, 1250))
-        conn.commit()
-        credits = 1250
-    else:
-        credits = row["credits"]
-    
-    if credits < amount:
-        conn.close()
-        return False, credits
-    
-    new_balance = credits - amount
-    conn.execute("UPDATE users SET credits = ? WHERE user_id = ?", (new_balance, user_id))
-    conn.commit()
-    conn.close()
-    return True, new_balance
-
 @app.get("/credits/{user_id}")
 def get_credits(user_id: str):
     return {"user_id": user_id, "credits": get_user_credits(user_id)}
 
-@app.post("/credits/deduct")
-def deduct(request: CreditDeductRequest):
-    success, new_balance = deduct_credits(request.user_id, request.amount)
-    if not success:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+@app.post("/credits/add")
+def add_credits(request: CreditAddRequest):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    
+    # Ensure user exists
+    cur = conn.execute("SELECT credits FROM users WHERE user_id = ?", (request.user_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.execute("INSERT INTO users (user_id, credits) VALUES (?, ?)", (request.user_id, 1250))
+        current_credits = 1250
+    else:
+        current_credits = row["credits"]
+        
+    new_balance = current_credits + request.amount
+    conn.execute("UPDATE users SET credits = ? WHERE user_id = ?", (new_balance, request.user_id))
+    
+    if request.stripe_session_id:
+        conn.execute(
+            "INSERT OR REPLACE INTO transactions (session_id, user_id, amount, status) VALUES (?, ?, ?, ?)",
+            (request.stripe_session_id, request.user_id, request.amount, "completed")
+        )
+        
+    conn.commit()
+    conn.close()
     return {"user_id": request.user_id, "credits": new_balance}
 
-@app.post("/generate")
+@app.post("/ai/generate")
 def generate_video(request: GenerateRequest):
-    success, new_balance = deduct_credits(request.user_id, 50)
-    if not success:
+    credits = get_user_credits(request.user_id)
+    if credits < 50:
         raise HTTPException(status_code=402, detail="Insufficient credits")
     
-    job_id = str(uuid.uuid4())
+    # Deduct 50 credits automatically
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("UPDATE users SET credits = credits - 50 WHERE user_id = ?", (request.user_id,))
+    
+    job_id = str(uuid.uuid4())
     conn.execute(
         "INSERT INTO jobs (job_id, user_id, prompt, model, status) VALUES (?, ?, ?, ?, ?)",
         (job_id, request.user_id, request.prompt, request.model, "queued")
@@ -119,7 +129,7 @@ def generate_video(request: GenerateRequest):
     threading.Thread(target=process).start()
     return {"job_id": job_id, "status": "queued"}
 
-@app.get("/job/{job_id}")
+@app.get("/ai/job/{job_id}")
 def get_job_status(job_id: str):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
