@@ -25,7 +25,6 @@ def add_credits_to_database(customer_email: str, credits_to_add: int):
         new_balance = row[0] + credits_to_add
         cursor.execute("UPDATE users SET credits = ? WHERE email = ?", (new_balance, customer_email))
     else:
-        # If user record doesn't exist yet, create it with baseline + purchased credits
         cursor.execute("INSERT INTO users (email, credits) VALUES (?, ?)", (customer_email, credits_to_add))
         
     conn.commit()
