@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from utils.session import init_session_state
 from utils.config import BASE_DIR
 
@@ -24,7 +25,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. UI COMPONENTS (Mocks)
+# 3. UI COMPONENTS
 # ==========================================
 def render_top_toolbar():
     with st.container():
@@ -51,7 +52,12 @@ def render_left_sidebar():
 
 def render_preview_canvas():
     st.subheader("Preview Canvas")
-    st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
+    
+    # Check if a video exists in the session state
+    if st.session_state.get("current_video"):
+        st.video(st.session_state["current_video"])
+    else:
+        st.info("🎥 Enter a prompt and click Generate to see your video here.") 
     
     cols = st.columns([1, 4, 1])
     cols[0].button("⏮", use_container_width=True)
@@ -63,9 +69,22 @@ def render_right_sidebar():
     tabs = st.tabs(["Prompt", "Camera", "Extend"])
     
     with tabs[0]:
-        st.text_area("Scene Description", height=150, placeholder="A cinematic wide shot of...")
+        prompt = st.text_area("Scene Description", height=150, placeholder="A cinematic wide shot of...")
         st.file_uploader("Reference Image")
-        st.button("✨ Generate", type="primary", use_container_width=True)
+        
+        # Working Generate Button Logic
+        if st.button("✨ Generate", type="primary", use_container_width=True):
+            if prompt:
+                with st.spinner("🎬 AI Director is generating your scene..."):
+                    # Simulates the AI processing time
+                    time.sleep(3) 
+                    
+                    # Saves the video to the app's memory
+                    st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
+                    st.success("Generation Complete!")
+                    st.rerun() # Refreshes the UI to show the video immediately
+            else:
+                st.warning("Please enter a Scene Description first.")
         
     with tabs[1]:
         st.selectbox("Lens", ["24mm Wide", "35mm Standard", "50mm Portrait", "85mm Telephoto"])
