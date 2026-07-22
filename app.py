@@ -1,156 +1,178 @@
-import streamlit as st
-import time
-from utils.session import init_session_state
-from utils.config import BASE_DIR
+flowchart LR
 
-# ==========================================
-# 1. PAGE CONFIGURATION & STATE
-# ==========================================
-st.set_page_config(
-    page_title="AI Cinematic Studio",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="collapsed" 
-)
-init_session_state()
+%% ==========================
+%% FRONTEND
+%% ==========================
+subgraph Frontend["🎬 Streamlit Frontend"]
 
-if "user_credits" not in st.session_state:
-    st.session_state["user_credits"] = 1250
+Login["🔐 Login"]
+Dashboard["📊 Dashboard"]
 
-# ==========================================
-# 2. CUSTOM CSS INJECTION
-# ==========================================
-st.markdown("""
-    <style>
-        .block-container { padding-top: 1rem; padding-bottom: 1rem; max-width: 98%; }
-        header { visibility: hidden; } 
-    </style>
-""", unsafe_allow_html=True)
+Movie["🎥 Movies"]
+Music["🎵 Music Videos"]
+Shorts["🎬 Short Films"]
 
-# ==========================================
-# 3. DIALOG: INSTANT TEST CREDITS TOP-UP
-# ==========================================
-@st.dialog("💳 Top Up Studio Credits")
-def show_upgrade_plan_dialog():
-    st.write("Select a top-up package to instantly add test credits:")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("### Starter Pack")
-        st.write("⚡ **50 Credits**")
-        st.write("**$1.00**")
-        if st.button("Add 50 Credits", key="test_add_1", use_container_width=True):
-            st.session_state["user_credits"] += 50
-            st.success("Successfully added 50 credits!")
-            time.sleep(1)
-            st.rerun()
-            
-    with col2:
-        st.markdown("### Creator Pro")
-        st.write("⚡ **300 Credits**")
-        st.write("**$5.00**")
-        if st.button("Add 300 Credits", key="test_add_5", use_container_width=True):
-            st.session_state["user_credits"] += 300
-            st.success("Successfully added 300 credits!")
-            time.sleep(1)
-            st.rerun()
-            
-    with col3:
-        st.markdown("### Studio Unlimited")
-        st.write("⚡ **700 Credits**")
-        st.write("**$10.00**")
-        if st.button("Add 700 Credits", key="test_add_10", use_container_width=True):
-            st.session_state["user_credits"] += 700
-            st.success("Successfully added 700 credits!")
-            time.sleep(1)
-            st.rerun()
+Storyboard["📖 Storyboard"]
+Timeline["🎞 Timeline"]
+Assets["🖼 Asset Library"]
 
-# ==========================================
-# 4. UI COMPONENTS
-# ==========================================
-def render_top_toolbar():
-    with st.container():
-        cols = st.columns([2, 1, 1, 1, 2, 1.4, 1], vertical_alignment="center")
-        cols[0].markdown("### 🎬 Cinematic Studio")
-        cols[1].button("📁 Project", use_container_width=True)
-        cols[2].button("💾 Save", use_container_width=True)
-        cols[3].button("↩️ Undo", use_container_width=True)
-        cols[4].selectbox("🧠 AI Model", ["Veo 3.1 Pro", "Runway Gen-3", "Sora", "Kling"], label_visibility="collapsed")
-        
-        current_creds = st.session_state["user_credits"]
-        if cols[5].button(f"🚀 Upgrade (Bal: {current_creds})", use_container_width=True, type="primary"):
-            show_upgrade_plan_dialog()
-            
-        cols[6].button("👤 Profile", use_container_width=True)
-        st.divider()
+Billing["💳 Billing"]
+Settings["⚙️ Settings"]
 
-def render_left_sidebar():
-    st.subheader("Library")
-    tabs = st.tabs(["Storyboard", "Assets", "Uploads"])
-    with tabs[0]: 
-        st.info("Visual storyboard blocks will appear here.")
-    
-    st.divider()
-    st.subheader("🎞️ Timeline")
-    st.button("+ Add Scene", use_container_width=True)
-    st.button("View Render Queue", use_container_width=True)
+end
 
-def render_preview_canvas():
-    st.subheader("Preview Canvas")
-    
-    if st.session_state.get("current_video"):
-        st.video(st.session_state["current_video"])
-    else:
-        st.info("🎥 Enter a prompt and click Generate to see your video here.") 
-    
-    cols = st.columns([1, 4, 1])
-    cols[0].button("⏮", use_container_width=True)
-    cols[1].slider("Playhead", 0, 100, 50, label_visibility="collapsed")
-    cols[2].button("⏭", use_container_width=True)
+%% ==========================
+%% API GATEWAY
+%% ==========================
+subgraph Gateway["🚪 FastAPI Gateway"]
 
-def render_right_sidebar():
-    st.subheader("AI Director")
-    tabs = st.tabs(["Prompt", "Camera", "Extend"])
-    
-    with tabs[0]:
-        prompt = st.text_area("Scene Description", height=150, placeholder="A cinematic wide shot of...")
-        st.file_uploader("Reference Image")
-        
-        if st.button("✨ Generate (Cost: 50 Credits)", type="primary", use_container_width=True):
-            if st.session_state["user_credits"] < 50:
-                st.error("❌ Not enough credits! Please click 'Upgrade' above to top up.")
-            elif prompt:
-                with st.spinner("🎬 AI Director is generating your scene..."):
-                    time.sleep(3) 
-                    st.session_state["user_credits"] -= 50
-                    st.session_state["current_video"] = "https://www.w3schools.com/html/mov_bbb.mp4"
-                    st.success("Generation Complete! (-50 Credits)")
-                    st.rerun()
-            else:
-                st.warning("Please enter a Scene Description first.")
-        
-    with tabs[1]:
-        st.selectbox("Lens", ["24mm Wide", "35mm Standard", "50mm Portrait", "85mm Telephoto"])
-        st.selectbox("Motion", ["Static", "Pan Right", "Push In", "FPV Drone"])
-        
-    with tabs[2]:
-        st.checkbox("Maintain Character Continuity", value=True)
-        st.checkbox("Maintain Environment", value=True)
-        st.button("🚀 Extend (+4s)", type="primary", use_container_width=True)
+Auth["Authentication"]
+ProjectsAPI["Projects API"]
+AssetsAPI["Assets API"]
+BillingAPI["Billing API"]
+AIAPI["AI API"]
+Webhook["Stripe Webhook"]
 
-# ==========================================
-# 5. MAIN WORKSPACE LAYOUT
-# ==========================================
-render_top_toolbar()
+end
 
-left_col, center_col, right_col = st.columns([2.5, 5, 3.5], gap="large")
+%% ==========================
+%% SERVICES
+%% ==========================
+subgraph Services["⚙️ Backend Services"]
 
-with left_col:
-    render_left_sidebar()
+ProjectService["Project Manager"]
 
-with center_col:
-    render_preview_canvas()
+AssetService["Asset Manager"]
 
-with right_col:
-    render_right_sidebar()
+CreditService["Credit Manager"]
+
+RenderQueue["Render Queue"]
+
+RenderWorker["AI Render Workers"]
+
+Notification["Notification Service"]
+
+end
+
+%% ==========================
+%% DATABASE
+%% ==========================
+subgraph Database["🗄 PostgreSQL"]
+
+Users[(Users)]
+
+Projects[(Projects)]
+
+Scenes[(Scenes)]
+
+AssetsDB[(Assets)]
+
+Credits[(Credits)]
+
+Transactions[(Transactions)]
+
+Jobs[(Render Jobs)]
+
+end
+
+%% ==========================
+%% STORAGE
+%% ==========================
+subgraph Storage["☁ Cloud Storage"]
+
+Images[(Images)]
+
+Videos[(Videos)]
+
+Audio[(Audio)]
+
+Exports[(Exports)]
+
+end
+
+%% ==========================
+%% AI
+%% ==========================
+subgraph AI["🤖 AI Providers"]
+
+OpenAI["OpenAI"]
+
+Veo["Google Veo"]
+
+Runway["Runway"]
+
+Kling["Kling"]
+
+ElevenLabs["ElevenLabs"]
+
+end
+
+%% ==========================
+%% PAYMENTS
+%% ==========================
+subgraph Stripe["💳 Stripe"]
+
+Checkout["Checkout"]
+
+Payment["Payment"]
+
+end
+
+%% ==========================
+%% FLOW
+%% ==========================
+
+Frontend --> Gateway
+
+Gateway --> ProjectService
+Gateway --> AssetService
+Gateway --> CreditService
+
+Gateway --> AIAPI
+
+Gateway --> Database
+
+ProjectService --> Projects
+ProjectService --> Scenes
+
+AssetService --> AssetsDB
+
+AssetService --> Storage
+
+CreditService --> Credits
+CreditService --> Transactions
+
+Billing --> Checkout
+
+Checkout --> Payment
+
+Payment --> Webhook
+
+Webhook --> BillingAPI
+
+BillingAPI --> CreditService
+
+AIAPI --> RenderQueue
+
+RenderQueue --> RenderWorker
+
+RenderWorker --> OpenAI
+RenderWorker --> Veo
+RenderWorker --> Runway
+RenderWorker --> Kling
+RenderWorker --> ElevenLabs
+
+RenderWorker --> Jobs
+
+RenderWorker --> Videos
+RenderWorker --> Images
+RenderWorker --> Audio
+RenderWorker --> Exports
+
+Storage --> Dashboard
+
+Jobs --> Dashboard
+
+Credits --> Dashboard
+
+Notification --> Dashboard
