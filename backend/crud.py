@@ -42,7 +42,6 @@ def deduct_credits(db: Session, user_id: str, amount: int) -> tuple[bool, int]:
 def add_credits(db: Session, user_id: str, amount: int, stripe_session_id: str = None):
     user = get_or_create_user(db, user_id)
     user.credits += amount
-    # Log transaction
     transaction = models.Transaction(
         id=str(uuid.uuid4()),
         user_id=user_id,
