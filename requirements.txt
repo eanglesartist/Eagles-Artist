@@ -1,8 +1,11 @@
-streamlit>=1.30.0
-Pillow>=10.0.0
+streamlit>=1.29.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
 requests>=2.31.0
+stripe>=7.0.0
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
 python-dotenv>=1.0.0
-SQLAlchemy>=2.0.0
-openai>=1.0.0
-replicate>=0.22.0
-# Add specific SDKs for Luma/Runway/Pika as they become available
+alembic>=1.12.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
