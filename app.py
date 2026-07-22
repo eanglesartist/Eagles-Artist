@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import uuid
 import requests
+import stripe
 from utils.session import init_session_state
 from utils.config import BASE_DIR
 
@@ -16,16 +17,59 @@ st.set_page_config(
 )
 init_session_state()
 
-# Ensure a unique user ID for this browser session
+# ---------- Environment Config ----------
+# Use Streamlit secrets for production, fallback to localhost for development
+API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
+STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "sk_test_...")
+
+# ---------- User ID ----------
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = str(uuid.uuid4())
 
-# Default credits if not set
+# ---------- Credits ----------
 if "user_credits" not in st.session_state:
     st.session_state["user_credits"] = 1250
+if "_db_synced" not in st.session_state:
+    st.session_state["_db_synced"] = True
 
-# API base URL – change to your deployed backend URL later
-API_BASE = "http://localhost:8000"
+# ==========================================
+# STRIPE RETURN HANDLER (Instant Credits)
+# ==========================================
+session_id = st.query_params.get("session_id")
+
+if session_id and not st.session_state.get(f"processed_{session_id}"):
+    try:
+        stripe.api_key = STRIPE_SECRET_KEY
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+
+        if checkout_session.payment_status == "paid":
+            user_id = st.session_state["user_id"]
+            amount_total = checkout_session.amount_total / 100
+            credits_map = {1.0: 50, 5.0: 300, 10.0: 700}
+            credits_to_add = credits_map.get(amount_total, 0)
+
+            if credits_to_add > 0:
+                # Tell the backend to add credits (idempotent via stripe_session_id)
+                add_resp = requests.post(
+                    f"{API_BASE}/credits/add",
+                    json={
+                        "user_id": user_id,
+                        "amount": credits_to_add,
+                        "stripe_session_id": session_id
+                    }
+                )
+                if add_resp.status_code == 200:
+                    new_balance = add_resp.json().get("credits", 1250)
+                    st.session_state["user_credits"] = new_balance
+                    st.session_state[f"processed_{session_id}"] = True
+                    st.query_params.clear()
+                    st.success(f"✅ Payment successful! Added {credits_to_add} credits.")
+                    st.rerun()
+                else:
+                    st.error("⚠️ Credits added but could not sync. Please refresh.")
+    except Exception as e:
+        st.error(f"Payment verification error: {e}")
+        st.query_params.clear()
 
 # ==========================================
 # CUSTOM CSS
@@ -47,6 +91,7 @@ def show_upgrade_plan_dialog():
     with col1:
         st.markdown("### Starter Pack")
         st.write("⚡ **50 Credits** | **$1.00**")
+        # Replace with your actual Stripe Payment Link
         st.link_button("🔗 Pay $1.00", "https://buy.stripe.com/your_link_1", type="primary")
     with col2:
         st.markdown("### Creator Pro")
