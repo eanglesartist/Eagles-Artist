@@ -4,12 +4,10 @@ import uuid
 import requests
 import stripe
 from utils.session import init_session_state
-from utils.config import BASE_DIR
 
 st.set_page_config(page_title="AI Cinematic Studio", page_icon="🎬", layout="wide", initial_sidebar_state="collapsed")
 init_session_state()
 
-# ---------- Environment Config ----------
 API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "sk_test_...")
 
@@ -63,7 +61,6 @@ def show_upgrade_dialog():
         st.link_button("Pay $10.00", "https://buy.stripe.com/your_link_10", type="primary")
     st.info("Replace links with your actual Stripe Payment Links.")
 
-# ---------- UI Components ----------
 def render_top_toolbar():
     with st.container():
         cols = st.columns([2,1,1,1,2,1.4,1], vertical_alignment="center")
@@ -112,7 +109,6 @@ def render_right_sidebar():
             else:
                 with st.spinner("🎬 Generating..."):
                     try:
-                        # Check credits
                         resp = requests.get(f"{API_BASE}/credits/{st.session_state.user_id}")
                         if resp.status_code != 200:
                             st.error("Could not check credits.")
@@ -120,7 +116,6 @@ def render_right_sidebar():
                         if resp.json().get("credits",0) < 50:
                             st.error("❌ Not enough credits! Upgrade.")
                             st.stop()
-                        # Submit job
                         gen_resp = requests.post(
                             f"{API_BASE}/ai/generate",
                             json={
@@ -138,9 +133,8 @@ def render_right_sidebar():
                         job = gen_resp.json()
                         job_id = job["job_id"]
                         st.info(f"✅ Job queued (ID: {job_id[:8]})")
-                        # Poll
                         status_widget = st.empty()
-                        for i in range(60):  # max 60 seconds
+                        for i in range(60):
                             status_widget.info(f"⏳ Rendering... ({i+1}/60)")
                             time.sleep(1)
                             job_resp = requests.get(f"{API_BASE}/ai/job/{job_id}")
@@ -155,7 +149,6 @@ def render_right_sidebar():
                                     break
                         else:
                             status_widget.warning("⏳ Still processing. Check later.")
-                        # Refresh credits
                         new_cred = requests.get(f"{API_BASE}/credits/{st.session_state.user_id}")
                         if new_cred.status_code == 200:
                             st.session_state.user_credits = new_cred.json().get("credits",0)
@@ -172,7 +165,6 @@ def render_right_sidebar():
         st.checkbox("Maintain Environment", value=True)
         st.button("🚀 Extend (+4s)", type="primary")
 
-# ---------- Main Layout ----------
 render_top_toolbar()
 left_col, center_col, right_col = st.columns([2.5,5,3.5], gap="large")
 with left_col: render_left_sidebar()
