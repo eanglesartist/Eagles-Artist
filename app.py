@@ -40,23 +40,22 @@ def show_upgrade_plan_dialog():
         st.markdown("### Starter Pack")
         st.write("⚡ **50 Credits**")
         st.write("**$1.00**")
-        # Replace '#' with your actual Stripe Payment Link URL (e.g., https://buy.stripe.com/...)
-        st.markdown("[Checkout $1](https://buy.stripe.com/your_link_1dollar)", unsafe_allow_html=True)
+        st.markdown("[Checkout $1](https://buy.stripe.com/your_actual_live_link_1)", unsafe_allow_html=True)
             
     with col2:
         st.markdown("### Creator Pro")
         st.write("⚡ **300 Credits**")
         st.write("**$5.00**")
-        st.markdown("[Checkout $5](https://buy.stripe.com/your_link_5dollar)", unsafe_allow_html=True)
+        st.markdown("[Checkout $5](https://buy.stripe.com/your_actual_live_link_5)", unsafe_allow_html=True)
             
     with col3:
         st.markdown("### Studio Unlimited")
         st.write("⚡ **700 Credits**")
         st.write("**$10.00**")
-        st.markdown("[Checkout $10](https://buy.stripe.com/your_link_10dollar)", unsafe_allow_html=True)
+        st.markdown("[Checkout $10](https://buy.stripe.com/your_actual_live_link_10)", unsafe_allow_html=True)
         
     st.divider()
-    st.info("💡 Tip: After completing your payment on Stripe, your credits will update automatically once configured with a Stripe Webhook.")
+    st.info("💡 Tip: Replace the link URLs in app.py with your real Stripe Payment Links once generated from your dashboard.")
 
 # ==========================================
 # 4. UI COMPONENTS
